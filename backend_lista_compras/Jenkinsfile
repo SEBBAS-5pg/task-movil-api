@@ -1,11 +1,13 @@
 import java.time.*
-import java.time.format.DateTimeFormatter
 
 pipeline {
     agent any
 
     environment {
+        DATE_NOW = ''
+        DOCKER_TAG = ''
         REPOSITORY_URI = "backend-security"
+        REPOSITORY_URI_APP = ""
     }
 
     stages {
@@ -13,16 +15,20 @@ pipeline {
             steps {
                 script {
                     def now = new Date()
-                    def dateNow = now.format("yyMMdd.HHmm", TimeZone.getTimeZone('UTC'))
-                    def dockerTag = "${dateNow}.${BUILD_NUMBER}"
-                    def repositoryUriApp = "${REPOSITORY_URI}:${dockerTag}"
-
-                    env.DATE_NOW = dateNow
-                    env.DOCKER_TAG = dockerTag
-                    env.REPOSITORY_URI_APP = repositoryUriApp
-
+                    DATE_NOW = now.format("yyMMdd.HHmm", TimeZone.getTimeZone('UTC'))
+                    DOCKER_TAG = "$DATE_NOW.$BUILD_NUMBER"
+                    REPOSITORY_URI_APP = "$REPOSITORY_URI:$DOCKER_TAG"
                     echo "🕒 Fecha actual: ${DATE_NOW}"
                     echo "🏷️ Tag generado: ${REPOSITORY_URI_APP}"
+                }
+            }
+        }
+
+        stage('Compilando Proyecto') {
+            steps {
+                dir('backend_lista_compras') {
+                    echo '⚙️ Compilando el proyecto con Maven...'
+                    sh './mvnw clean package -DskipTests'
                 }
             }
         }
@@ -32,17 +38,11 @@ pipeline {
                 script {
                     echo "🚀 Iniciando despliegue con Docker Compose..."
                     echo "📦 Usando imagen: ${REPOSITORY_URI_APP}"
-
-                    // Desplegar el backend usando el docker-compose de la carpeta backend_lista_compras
                     sh """
                         CONTAINER_IMAGE=${REPOSITORY_URI_APP} \
                         docker compose -f ./backend_lista_compras/docker-compose.yml up -d --build
+                        docker image prune -f
                     """
-
-                    // Limpiar imágenes antiguas
-                    sh "docker image prune -f"
-
-                    echo "✅ Despliegue completado correctamente."
                 }
             }
         }
@@ -50,11 +50,10 @@ pipeline {
 
     post {
         success {
-            echo "🎉 Pipeline completado exitosamente: ${REPOSITORY_URI_APP}"
-            sh "docker ps"
+            echo '✅ Despliegue exitoso.'
         }
         failure {
-            echo "❌ Error durante la ejecución del pipeline. Verifica los logs en Jenkins."
+            echo '❌ Error durante la ejecución del pipeline. Verifica los logs en Jenkins.'
         }
     }
 }
