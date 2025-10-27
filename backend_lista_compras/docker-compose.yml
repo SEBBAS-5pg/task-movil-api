@@ -5,8 +5,8 @@ services:
     image: ${CONTAINER_IMAGE}
     container_name: backend-lista-compras
     build:
-      context: ../
-      dockerfile: ./devops/Dockerfile
+      context: .
+      dockerfile: ./Dockerfile
     ports:
       - "9000:9000"
     environment:
