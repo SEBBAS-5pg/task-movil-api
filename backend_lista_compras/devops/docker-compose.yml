@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  backend-lista-compras:
+    image: ${CONTAINER_IMAGE}
+    container_name: backend-lista-compras
+    build:
+      context: ../
+      dockerfile: ./devops/Dockerfile
+    ports:
+      - "9000:9000"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/listacompras
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=admin
+    depends_on:
+      - postgres-db
+    networks:
+      - network_local_server
+
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: postgres-db
+    restart: always
+    ports:
+      - "5451:5432"
+    environment:
+      POSTGRES_DB: listacompras
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - network_local_server
+
+networks:
+  network_local_server:
+    external: true
+
+volumes:
+  postgres_data:
