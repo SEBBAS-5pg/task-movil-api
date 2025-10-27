@@ -9,25 +9,20 @@ pipeline {
     }
 
     stages {
-
         stage('Construyendo Tag') {
             steps {
                 script {
-                    // Fecha actual en formato yyMMdd.HHmm UTC
                     def now = new Date()
                     def dateNow = now.format("yyMMdd.HHmm", TimeZone.getTimeZone('UTC'))
-
-                    // Construcción del tag con número de build
                     def dockerTag = "${dateNow}.${BUILD_NUMBER}"
                     def repositoryUriApp = "${REPOSITORY_URI}:${dockerTag}"
 
-                    // Guardar en variables del pipeline
                     env.DATE_NOW = dateNow
                     env.DOCKER_TAG = dockerTag
                     env.REPOSITORY_URI_APP = repositoryUriApp
 
-                    echo "🕒 Fecha actual: ${env.DATE_NOW}"
-                    echo "🏷️ Tag generado: ${env.REPOSITORY_URI_APP}"
+                    echo "🕒 Fecha actual: ${DATE_NOW}"
+                    echo "🏷️ Tag generado: ${REPOSITORY_URI_APP}"
                 }
             }
         }
@@ -36,13 +31,18 @@ pipeline {
             steps {
                 script {
                     echo "🚀 Iniciando despliegue con Docker Compose..."
-                    
-                    // Asegúrate de que docker-compose.yml esté en ./devops/
+                    echo "📦 Usando imagen: ${REPOSITORY_URI_APP}"
+
+                    // Desplegar el backend usando el docker-compose de la carpeta backend_lista_compras
                     sh """
-                        echo '📦 Usando imagen: ${REPOSITORY_URI_APP}'
-                        docker compose -f ./devops/docker-compose.yml up -d --build
-                        docker image prune -f
+                        CONTAINER_IMAGE=${REPOSITORY_URI_APP} \
+                        docker compose -f ./backend_lista_compras/docker-compose.yml up -d --build
                     """
+
+                    // Limpiar imágenes antiguas
+                    sh "docker image prune -f"
+
+                    echo "✅ Despliegue completado correctamente."
                 }
             }
         }
@@ -50,7 +50,7 @@ pipeline {
 
     post {
         success {
-            echo "🎉 Pipeline completado exitosamente: ${env.REPOSITORY_URI_APP}"
+            echo "🎉 Pipeline completado exitosamente: ${REPOSITORY_URI_APP}"
             sh "docker ps"
         }
         failure {
